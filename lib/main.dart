@@ -1,224 +1,137 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
-  runApp(const StudentPortalApp());
+  runApp(const MyApp());
 }
 
-class StudentPortalApp extends StatelessWidget {
-  const StudentPortalApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Student Profile',
-      theme: ThemeData(
-        primaryColor: const Color(0xFF1E3A8A),
-        scaffoldBackgroundColor: const Color(0xFFF3F4F6),
-      ),
+      title: 'Student Profile App',
+      theme: ThemeData(primarySwatch: Colors.blue),
       home: const StudentProfileScreen(),
     );
   }
 }
 
-class StudentProfileScreen extends StatelessWidget {
+class StudentProfileScreen extends StatefulWidget {
   const StudentProfileScreen({super.key});
 
-  final String studentName = "Brayan Jeremia Jonas";
-  final String courseName = "Bachelor in Information Technology";
-  final String studentId = "BIT-2026-0892";
+  @override
+  State<StudentProfileScreen> createState() => _StudentProfileScreenState();
+}
+
+class _StudentProfileScreenState extends State<StudentProfileScreen> {
+  Map<String, dynamic>? studentData;
+  bool isLoading = true;
+  String errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchStudentProfile();
+  }
+
+  // Njia ya kuchukua taarifa kutoka Backend API
+  Future<void> fetchStudentProfile() async {
+    try {
+      final response = await http.get(Uri.parse('http://localhost:5000/api/student'));
+      
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        setState(() {
+          studentData = jsonResponse['data'];
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          errorMessage = 'Failed to load student data';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Connection error: $e';
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Student Profile",
-          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF1E3A8A),
-        elevation: 2,
+        title: const Text('Student Profile'),
         centerTitle: true,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 400),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Profile Picture Stack
-                  Stack(
-                    alignment: Alignment.bottomRight,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : errorMessage.isNotEmpty
+              ? Center(child: Text(errorMessage, style: const TextStyle(color: Colors.red)))
+              : Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const CircleAvatar(
-                        radius: 55,
-                        backgroundColor: Color(0xFF1E3A8A),
-                        child: CircleAvatar(
-                          radius: 52,
-                          backgroundImage: AssetImage('assets/images/brai.png'),
-                        ),
+                        radius: 50,
+                        backgroundColor: Colors.blueAccent,
+                        child: Icon(Icons.person, size: 50, color: Colors.white),
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const CircleAvatar(
-                          radius: 8,
-                          backgroundColor: Colors.green,
-                        ),
+                      const SizedBox(height: 16),
+                      Text(
+                        studentData?['fullName'] ?? 'N/A',
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Student Name
-                  Text(
-                    studentName,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1F2937),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-
-                  // Student ID
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      studentId,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF1D4ED8),
+                      const SizedBox(height: 8),
+                      Text(
+                        studentData?['degreeProgram'] ?? 'N/A',
+                        style: const TextStyle(fontSize: 16, color: Colors.grey),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Divider(thickness: 1, height: 1),
-                  const SizedBox(height: 20),
-
-                  // Course Details
-                  _buildProfileRow(
-                    icon: Icons.school_outlined,
-                    label: "Degree Program",
-                    value: courseName,
-                  ),
-                  const SizedBox(height: 15),
-                  _buildProfileRow(
-                    icon: Icons.badge_outlined,
-                    label: "Status",
-                    value: "Active Student",
-                  ),
-                  const SizedBox(height: 25),
-
-                  // Interactive Buttons Section
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Opening Email Client..."),
-                                duration: Duration(seconds: 2),
+                      const SizedBox(height: 24),
+                      Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.badge, color: Colors.blue),
+                                title: const Text('Student ID'),
+                                subtitle: Text(studentData?['id'] ?? 'N/A'),
                               ),
-                            );
-                          },
-                          icon: const Icon(Icons.email_outlined, size: 18),
-                          label: const Text("Email"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1E3A8A),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Initiating Call..."),
-                                duration: Duration(seconds: 2),
+                              const Divider(),
+                              ListTile(
+                                leading: const Icon(Icons.email, color: Colors.blue),
+                                title: const Text('Email Address'),
+                                subtitle: Text(studentData?['email'] ?? 'N/A'),
                               ),
-                            );
-                          },
-                          icon: const Icon(Icons.phone_outlined, size: 18),
-                          label: const Text("Call"),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF1E3A8A),
-                            side: const BorderSide(color: Color(0xFF1E3A8A)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                              const Divider(),
+                              ListTile(
+                                leading: const Icon(Icons.phone, color: Colors.blue),
+                                title: const Text('Phone Number'),
+                                subtitle: Text(studentData?['phone'] ?? 'N/A'),
+                              ),
+                              const Divider(),
+                              ListTile(
+                                leading: const Icon(Icons.school, color: Colors.blue),
+                                title: const Text('Status'),
+                                subtitle: Text(studentData?['status'] ?? 'Active'),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileRow({required IconData icon, required String label, required String value}) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xFF4B5563), size: 22),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1F2937),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
